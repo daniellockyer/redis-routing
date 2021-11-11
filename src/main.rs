@@ -49,18 +49,26 @@ async fn index(app_data: web::Data<AppData>, req: HttpRequest, body: Bytes) -> i
         .to_str()
         .expect("Could not convert to str");
 
-    let query_res: RedisResult<i32> =
-        measure_time!("LOOKUP", redis_connection.hget("backend", host_header));
+    let now = Instant::now();
+    let query_res: RedisResult<i32> = redis_connection.hget("backend", host_header);
 
     match query_res {
         Ok(port) => {
             let backend_url = format!("http://127.0.0.1:{}", port);
 
-            reverse::ReverseProxy::new(&backend_url)
+            let res = reverse::ReverseProxy::new(&backend_url)
                 .timeout(Duration::from_secs(1))
                 .forward(req, body)
                 .await
-                .unwrap_or_else(|e| e.into())
+                .unwrap_or_else(|e| e.into());
+
+            info!(
+                "Fetched from {} in {}ms",
+                backend_url,
+                now.elapsed().as_micros() as f64 / 1000.0
+            );
+
+            res
         }
         Err(error) => {
             error!("{:?}", error);
