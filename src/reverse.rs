@@ -91,11 +91,9 @@ impl<'a> ReverseProxy<'a> {
         req: HttpRequest,
         body: Bytes,
     ) -> Result<HttpResponse, actix_web::Error> {
-        let forward_url: &str = self.forward_url;
-
         let forward_uri = match req.uri().query() {
-            Some(query) => format!("{}{}?{}", forward_url, req.uri().path(), query),
-            None => format!("{}{}", forward_url, req.uri().path()),
+            Some(query) => format!("{}{}?{}", self.forward_url, req.uri().path(), query),
+            None => format!("{}{}", self.forward_url, req.uri().path()),
         };
 
         let forward_req = client::Client::new()
